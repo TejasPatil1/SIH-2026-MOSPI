@@ -345,11 +345,15 @@ export function ContributionBars({ drivers, baseRisk, riskScore }: {
 /* ========================================================== prediction band */
 
 /** Point estimate inside its p10–p90 interval. The interval is the credibility. */
-export function RangeBar({ p10, p50, p90, point, unit, domain }: {
+export function RangeBar({ p10, p50, p90, point, unit, domain, caption }: {
   p10: number; p50: number; p90: number; point: number; unit: string; domain: [number, number];
+  /** Replaces the default caption. Plain language beats "80% prediction interval". */
+  caption?: string;
 }) {
   const [lo, hi] = domain;
   const pos = (v: number) => `${clamp(((v - lo) / (hi - lo)) * 100, 0, 100)}%`;
+  /* '%' hugs the number; a word unit needs the space. */
+  const suffix = unit === '%' ? '%' : unit ? ` ${unit}` : '';
   return (
     <div className="pt-1">
       <div className="relative h-[26px]">
@@ -364,16 +368,16 @@ export function RangeBar({ p10, p50, p90, point, unit, domain }: {
           className="absolute top-[4px] w-[9px] h-[17px] rounded-[2px] bg-accent border-2 border-surface shadow-sm -translate-x-1/2 transition-[left] duration-300"
           style={{ left: pos(point) }}
         />
-        <div className="absolute top-[21px] text-2xs num font-semibold text-ink-3" style={{ left: pos(p10), transform: 'translateX(-50%)' }}>
-          {p10.toFixed(1)}
+        <div className="absolute top-[21px] text-2xs num font-semibold text-ink-3 whitespace-nowrap" style={{ left: pos(p10), transform: 'translateX(-50%)' }}>
+          {p10.toFixed(1)}{suffix}
         </div>
-        <div className="absolute top-[21px] text-2xs num font-semibold text-ink-3" style={{ left: pos(p90), transform: 'translateX(-50%)' }}>
-          {p90.toFixed(1)}
+        <div className="absolute top-[21px] text-2xs num font-semibold text-ink-3 whitespace-nowrap" style={{ left: pos(p90), transform: 'translateX(-50%)' }}>
+          {p90.toFixed(1)}{suffix}
         </div>
       </div>
-      <div className="text-2xs text-ink-3 mt-3 flex justify-between">
-        <span>80% prediction interval{unit ? ` (${unit})` : ''}</span>
-        <span className="num">median {p50.toFixed(1)}</span>
+      <div className="text-2xs text-ink-3 mt-3 flex justify-between gap-3">
+        <span>{caption ?? `80% prediction interval${unit ? ` (${unit})` : ''}`}</span>
+        {!caption && <span className="num shrink-0">median {p50.toFixed(1)}</span>}
       </div>
     </div>
   );
@@ -435,16 +439,17 @@ export function SectorMatrix({ sectors, onSelect, limit = 10 }: {
 
   return (
     <div className="space-y-px">
-      <div className="grid grid-cols-[168px_1fr_86px_54px] gap-3 pb-1.5 mb-1 border-b border-line">
+      <div className="grid grid-cols-[168px_1fr_86px_62px] gap-3 pb-1.5 mb-1 border-b border-line">
         <span className="eyebrow">Sector</span>
         <span className="eyebrow">Risk composition</span>
         <span className="eyebrow text-right">Exposure</span>
-        <span className="eyebrow text-right">Mean</span>
+        <span className="eyebrow text-right">Avg risk</span>
       </div>
-      {shown.map((s) => (
+      {shown.map((s, i) => (
         <div
           key={s.sector}
-          className="grid grid-cols-[168px_1fr_86px_54px] gap-3 items-center py-[7px] rounded px-1 -mx-1
+          data-tour={i === 0 ? 'sector-row-top' : undefined}
+          className="grid grid-cols-[168px_1fr_86px_62px] gap-3 items-center py-[7px] rounded px-1 -mx-1
                      hover:bg-accent-soft/50 transition-colors duration-150 cursor-pointer group"
           onClick={() => onSelect?.(s.sector)}
         >
@@ -517,12 +522,12 @@ export function CalibrationChart({ points, height = 210 }: {
   const data = points.map((p) => ({ ...p, ideal: p.predicted }));
   return (
     <ResponsiveContainer width="100%" height={height}>
-      <ComposedChart data={data} margin={{ top: 8, right: 10, bottom: 2, left: -18 }}>
+      <ComposedChart data={data} margin={{ top: 8, right: 10, bottom: 2, left: 0 }}>
         <CartesianGrid stroke={GRID} />
         <XAxis dataKey="predicted" type="number" domain={[0, 1]} ticks={[0, 0.25, 0.5, 0.75, 1]}
           tick={AXIS} tickLine={false} axisLine={{ stroke: GRID }} tickFormatter={(v) => `${(v * 100).toFixed(0)}%`} tickMargin={6} />
         <YAxis type="number" domain={[0, 1]} ticks={[0, 0.25, 0.5, 0.75, 1]}
-          tick={AXIS} tickLine={false} axisLine={false} width={46} tickFormatter={(v) => `${(v * 100).toFixed(0)}%`} />
+          tick={AXIS} tickLine={false} axisLine={false} width={38} tickFormatter={(v) => `${(v * 100).toFixed(0)}%`} />
         <Tooltip
           cursor={{ stroke: '#A5ABB5', strokeDasharray: '3 3' }}
           content={({ active, payload }) => {

@@ -1,4 +1,4 @@
-import { type ReactNode, useState } from 'react';
+import { type ReactNode } from 'react';
 import type { RiskBand, Severity } from '../api/types';
 import { BAND, SEVERITY, clamp } from '../lib/format';
 
@@ -6,14 +6,17 @@ const cx = (...c: (string | false | undefined | null)[]) => c.filter(Boolean).jo
 
 /* ------------------------------------------------------------------ layout */
 
-export function Page({ title, lede, actions, children }: {
-  title: string; lede?: string; actions?: ReactNode; children: ReactNode;
+export function Page({ title, lede, actions, children, info }: {
+  title: string; lede?: ReactNode; actions?: ReactNode; children: ReactNode; info?: ReactNode;
 }) {
   return (
     <div className="fade-in">
       <header className="flex items-end justify-between gap-6 pb-4 mb-5 border-b border-line">
         <div className="min-w-0">
-          <h1 className="text-xl font-semibold tracking-[-0.015em] text-ink">{title}</h1>
+          <div className="flex items-center gap-2">
+            <h1 className="text-xl font-semibold tracking-[-0.015em] text-ink">{title}</h1>
+            {info}
+          </div>
           {lede && <p className="text-[13px] text-ink-2 mt-1 max-w-3xl">{lede}</p>}
         </div>
         {actions && <div className="flex items-center gap-2 shrink-0 pb-0.5">{actions}</div>}
@@ -23,16 +26,23 @@ export function Page({ title, lede, actions, children }: {
   );
 }
 
-export function Section({ title, note, actions, children, className, flush }: {
+export function Section({ title, note, actions, children, className, flush, tour, info }: {
   title?: string; note?: ReactNode; actions?: ReactNode;
-  children: ReactNode; className?: string; flush?: boolean;
+  children: ReactNode; className?: string; flush?: boolean; tour?: string;
+  /**
+   * An <Info> for the terminology this section uses. It sits with the heading —
+   * one fixed place across the whole application, so a reader who finds it once
+   * knows where to look on every other section.
+   */
+  info?: ReactNode;
 }) {
   return (
-    <section className={className}>
+    <section className={className} data-tour={tour}>
       {(title || actions) && (
         <div className={cx('flex items-baseline justify-between gap-4', flush ? 'mb-2' : 'mb-3')}>
-          <div className="flex items-baseline gap-3 min-w-0">
+          <div className="flex items-baseline gap-2.5 min-w-0">
             {title && <h2 className="text-[13px] font-semibold text-ink tracking-[-0.01em] whitespace-nowrap">{title}</h2>}
+            {info}
             {note && <span className="text-xs text-ink-3 min-w-0 truncate">{note}</span>}
           </div>
           {actions && <div className="flex items-center gap-2 shrink-0">{actions}</div>}
@@ -43,16 +53,20 @@ export function Section({ title, note, actions, children, className, flush }: {
   );
 }
 
-export const Panel = ({ children, className, pad = true }: { children: ReactNode; className?: string; pad?: boolean }) => (
-  <div className={cx('panel', pad && 'p-4', className)}>{children}</div>
+export const Panel = ({ children, className, pad = true, tour }: {
+  children: ReactNode; className?: string; pad?: boolean; tour?: string;
+}) => (
+  <div className={cx('panel', pad && 'p-4', className)} data-tour={tour}>{children}</div>
 );
 
 /* ----------------------------------------------------------------- metrics */
 
 /** A metric block, not a card. Size drives hierarchy — use `hero` sparingly. */
-export function Metric({ label, value, unit, hint, size = 'md', tone, className }: {
+export function Metric({ label, value, unit, hint, size = 'md', tone, className, info }: {
   label: string; value: ReactNode; unit?: string; hint?: ReactNode;
   size?: 'sm' | 'md' | 'lg' | 'hero'; tone?: 'default' | 'critical' | 'positive'; className?: string;
+  /** An <Info> for this metric's terminology, shown beside the label. */
+  info?: ReactNode;
 }) {
   const sizes = {
     sm: 'text-md font-semibold',
@@ -67,7 +81,10 @@ export function Metric({ label, value, unit, hint, size = 'md', tone, className 
   } as const;
   return (
     <div className={className}>
-      <div className="eyebrow mb-1.5">{label}</div>
+      <div className="eyebrow mb-1.5 flex items-center gap-1.5">
+        {label}
+        {info}
+      </div>
       <div className={cx('num tracking-[-0.02em] leading-none flex items-baseline gap-1.5', sizes[size], tones[tone ?? 'default'])}>
         <span>{value}</span>
         {unit && <span className="text-[12px] font-medium text-ink-3 tracking-normal">{unit}</span>}
@@ -195,27 +212,6 @@ export function SegmentedControl<T extends string | number>({ value, onChange, o
           </button>
         ))}
       </div>
-    </div>
-  );
-}
-
-export function Disclosure({ summary, children, defaultOpen = false }: {
-  summary: string; children: ReactNode; defaultOpen?: boolean;
-}) {
-  const [open, setOpen] = useState(defaultOpen);
-  return (
-    <div className="border-t border-line-faint mt-3 pt-2.5">
-      <button
-        onClick={() => setOpen(!open)}
-        className="flex items-center gap-1.5 text-xs font-semibold text-ink-2 hover:text-accent transition-colors duration-150"
-      >
-        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round"
-          className="transition-transform duration-200" style={{ transform: open ? 'rotate(90deg)' : 'none' }}>
-          <path d="M9 6l6 6-6 6" />
-        </svg>
-        {summary}
-      </button>
-      {open && <div className="mt-2.5 fade-in">{children}</div>}
     </div>
   );
 }

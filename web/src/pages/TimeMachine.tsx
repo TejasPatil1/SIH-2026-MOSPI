@@ -3,10 +3,14 @@ import { Link, useParams } from 'react-router-dom';
 import { useProject, useReplay } from '../api/hooks';
 import { HERO_SUMMARY } from '../api/mock';
 import { RiskTrajectory, TrajectoryLegend } from '../components/charts';
-import { EmptyState, ErrorCard, Panel, Skeleton, cx } from '../components/ui';
+import { ErrorCard, Panel, Skeleton, cx } from '../components/ui';
+import { Info, Term } from '../components/Info';
 import { BAND, clamp, formatCrore, formatMonth, formatMonths, formatPct } from '../lib/format';
 
 const STEP_MS = 250; // ~4 months per second (§10.2)
+
+/** The stored replays that carry a filed revision date, so a lead time is measurable. */
+const MEASURED_CASES = HERO_SUMMARY.filter((h) => h.lead_time_months !== null);
 
 export default function TimeMachine() {
   const { id = '' } = useParams();
@@ -63,27 +67,13 @@ export default function TimeMachine() {
 
   if (isError) {
     const status = (error as { status?: number })?.status;
-    if (status === 404) {
-      return (
-        <EmptyState
-          icon="clock"
-          title="Historical replay is not available for this project"
-          message="Replaying a project re-runs the model against every past monitoring month with future data masked. It is precomputed for the curated demonstration projects."
-          action={
-            <div className="flex flex-wrap gap-2 justify-center">
-              {HERO_SUMMARY.map((h) => (
-                <Link key={h.project_id} to={`/project/${h.project_id}/replay`} className="btn btn-ghost">
-                  {h.project_name}
-                  {h.lead_time_months !== null && (
-                    <span className="num text-accent font-bold">{h.lead_time_months} mo</span>
-                  )}
-                </Link>
-              ))}
-            </div>
-          }
-        />
-      );
-    }
+    /*
+     * Not an error state. Replay is precomputed, so most projects simply do not
+     * have one — which is a fact about this prototype's scope, not a failure.
+     * It is presented as a choice of what to replay, keeping the project the
+     * user came from named and one click away.
+     */
+    if (status === 404) return <ReplayUnavailable id={id} name={project.data?.project.project_name} />;
     return <ErrorCard error={error} retry={() => refetch()} context="The replay" />;
   }
 
@@ -95,6 +85,15 @@ export default function TimeMachine() {
   const alertIdx = data.points.findIndex((p) => p.as_of_month === data.model_alert_month);
   const officialIdx = data.points.findIndex((p) => p.as_of_month === data.official_event_month);
   const revealed = data.lead_time_months !== null && alertIdx >= 0 && officialIdx >= 0 && index >= officialIdx;
+  /*
+   * Three genuinely different states hide behind "no lead time on screen", and
+   * collapsing them is how a reconstruction that DID cross the threshold ends up
+   * captioned "never crosses" — the opposite of what happened.
+   */
+  const state = revealed ? 'measured'
+    : alertIdx < 0 ? 'never-crossed'
+      : data.official_event_month === null ? 'no-filed-revision'
+        : 'rewound';
 
   return (
     <div className="fade-in">
@@ -107,9 +106,29 @@ export default function TimeMachine() {
             </svg>
             {data.project_name}
           </Link>
-          <h1 className="text-xl font-semibold tracking-[-0.015em] text-ink">Time Machine</h1>
-          <p className="text-[13px] text-ink-2 mt-1">
-            Re-scoring the project at every past monitoring month, with everything after that month masked.
+          <div className="flex items-center gap-2">
+            <h1 className="text-xl font-semibold tracking-[-0.015em] text-ink">Time Machine</h1>
+            <Info terms={['replay', 'masking', 'lead_time']} title="What a replay does" />
+            {data.reconstructed && (
+              <span className="chip bg-raised border-line text-ink-3 gap-1">
+                Reconstructed live
+                <Info
+                  title="What “reconstructed live” means"
+                  terms={['replay', 'masking']}
+                  label="What reconstructed live means"
+                >
+                  <p>
+                    This trajectory was rebuilt on demand from this project’s own filed monthly
+                    series. The threshold crossing below is real. What it has no comparison against
+                    is a filed revision date — that is not in the snapshot data, so no lead time is
+                    claimed for this project.
+                  </p>
+                </Info>
+              </span>
+            )}
+          </div>
+          <p className="text-[13.5px] text-ink-2 mt-1 leading-relaxed">
+            Re-scoring the project at every past monitoring month, with everything after that month hidden.
           </p>
         </div>
 
@@ -125,16 +144,19 @@ export default function TimeMachine() {
       <div className="grid grid-cols-[minmax(0,1fr)_296px] gap-5 items-start">
         {/* ------------------------------------------------------- trajectory */}
         <div className="space-y-3">
-          <Panel className="pt-3.5 px-5 pb-4">
+          <Panel className="pt-3.5 px-5 pb-4" tour="replay-chart">
             <div className="flex items-baseline justify-between mb-1">
-              <h2 className="text-[13px] font-semibold text-ink">Reconstructed risk trajectory</h2>
+              <div className="flex items-center gap-2">
+                <h2 className="text-[13px] font-semibold text-ink">Reconstructed risk trajectory</h2>
+                <Info terms={['replay', 'masking', 'risk_score', 'alert_threshold']} title="Reading this chart" />
+              </div>
               <TrajectoryLegend replay={data} />
             </div>
 
             <RiskTrajectory replay={data} index={index} height={252} />
 
             {/* ------------------------------------------------ transport bar */}
-            <div className="flex items-center gap-4 mt-4 pt-3.5 border-t border-line">
+            <div data-tour="replay-transport" className="flex items-center gap-4 mt-4 pt-3.5 border-t border-line">
               <button
                 onClick={toggle}
                 className={cx('btn h-9 px-3.5 shrink-0 w-[168px] whitespace-nowrap', playing ? 'btn-ghost' : 'btn-primary')}
@@ -174,14 +196,14 @@ export default function TimeMachine() {
 
           {/* ------------------------------------------------ the finding ---- */}
           {revealed ? (
-            <Panel className="border-accent-line bg-accent-soft/45">
+            <Panel className="emph finding-band" tour="replay-finding">
               <div className="flex items-center gap-7">
                 <div className="shrink-0">
                   <div className="num text-4xl font-semibold tracking-[-0.035em] text-accent leading-none">
                     {data.lead_time_months}
                   </div>
-                  <div className="text-2xs font-bold uppercase tracking-[0.1em] text-accent mt-1.5">
-                    months of early warning
+                  <div className="text-2xs font-bold uppercase tracking-[0.1em] text-accent mt-1.5 flex items-center gap-1.5">
+                    months of <Term k="lead_time">early warning</Term>
                   </div>
                 </div>
 
@@ -210,16 +232,47 @@ export default function TimeMachine() {
             </Panel>
           ) : (
             <Panel className="border-dashed">
-              <p className="text-[12.5px] text-ink-2 leading-relaxed">
-                {data.official_event_month ? (
-                  <>Rewind past <span className="num font-semibold text-ink">{formatMonth(data.official_event_month)}</span> and
+              {state === 'rewound' && (
+                <p className="text-[13px] text-ink-2 leading-relaxed">
+                  Rewind past <span className="num font-semibold text-ink">{formatMonth(data.official_event_month)}</span> and
                   the finding is hidden again — the model's alert and the official record are only comparable once the
-                  replay has reached both.</>
-                ) : (
-                  <>This project never crosses the alert threshold. It is here to show the model discriminates rather
-                  than flagging everything — the contrast with a failing project is the point.</>
-                )}
-              </p>
+                  replay has reached both.
+                </p>
+              )}
+
+              {state === 'never-crossed' && (
+                <p className="text-[13px] text-ink-2 leading-relaxed">
+                  <span className="font-semibold text-ink">This project never crosses the alert threshold.</span> It is
+                  here to show the model discriminates rather than flagging everything — the contrast with a failing
+                  project is the point.
+                </p>
+              )}
+
+              {state === 'no-filed-revision' && (
+                <>
+                  <p className="text-[13px] text-ink leading-relaxed">
+                    <span className="font-semibold">
+                      The reconstruction crosses the alert threshold in {formatMonth(data.model_alert_month)}
+                    </span>{' '}
+                    — <span className="num font-semibold">{last - alertIdx}</span> monitoring months before the end of
+                    this project's record, using only what had been filed by that month.
+                  </p>
+                  <p className="text-[12.5px] text-ink-2 leading-relaxed mt-2">
+                    No <em>lead time</em> is stated here, because lead time is measured against the month an official
+                    revision was filed and the snapshot data does not carry that date for this project. Claiming one
+                    would be inventing the number the whole system rests on.
+                  </p>
+                  <div className="flex flex-wrap items-center gap-2 mt-3.5 pt-3 border-t border-line">
+                    <span className="text-[12.5px] text-ink-2">Cases where the revision date is on record:</span>
+                    {MEASURED_CASES.map((h) => (
+                      <Link key={h.project_id} to={`/project/${h.project_id}/replay`} className="btn btn-ghost h-[26px] px-2.5">
+                        {h.project_name.length > 26 ? `${h.project_name.slice(0, 26)}…` : h.project_name}
+                        <span className="num font-bold text-accent">{h.lead_time_months} mo</span>
+                      </Link>
+                    ))}
+                  </div>
+                </>
+              )}
             </Panel>
           )}
         </div>
@@ -228,7 +281,10 @@ export default function TimeMachine() {
         <div className="space-y-4 sticky top-0">
           <Panel>
             <div className="flex items-baseline justify-between mb-3">
-              <span className="eyebrow">Model state at</span>
+              <span className="eyebrow flex items-center gap-1.5">
+                Model state at
+                <Info terms={['physical_progress', 'financial_progress', 'spend_gap', 'shap']} title="Terms in this panel" />
+              </span>
               <span className="num text-[12.5px] font-semibold text-ink">{formatMonth(cur.as_of_month)}</span>
             </div>
 
@@ -298,6 +354,85 @@ export default function TimeMachine() {
           )}
         </div>
       </div>
+    </div>
+  );
+}
+
+/**
+ * Shown when a project has no precomputed replay. Deliberately not an error
+ * card: it states the scope honestly, explains what a replay is, and offers the
+ * projects that have one — with their lead times, which is the thing worth
+ * clicking through for.
+ */
+function ReplayUnavailable({ id, name }: { id: string; name?: string }) {
+  return (
+    <div className="fade-in max-w-3xl">
+      <header className="pb-4 mb-5 border-b border-line">
+        <Link
+          to={`/project/${id}`}
+          className="inline-flex items-center gap-1.5 text-[12px] font-semibold text-ink-2 hover:text-accent transition-colors mb-2"
+        >
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M15 6l-6 6 6 6" />
+          </svg>
+          {name ?? id}
+        </Link>
+        <div className="flex items-center gap-2">
+          <h1 className="text-xl font-semibold tracking-[-0.015em] text-ink">Time Machine</h1>
+          <Info terms={['replay', 'masking', 'lead_time']} title="What a replay does" />
+        </div>
+        <p className="text-[13px] text-ink-2 mt-1">
+          Re-scoring a project at every past monitoring month, with everything after that month hidden.
+        </p>
+      </header>
+
+      <Panel className="border-dashed">
+        <p className="text-[13px] text-ink leading-relaxed">
+          <span className="font-semibold">No replay is stored for {name ?? id}.</span> Reconstructing one means
+          re-running the model once per historical month against a rebuilt feature vector — too slow to do live, so
+          the prototype ships four of them precomputed.
+        </p>
+        <p className="text-[12.5px] text-ink-2 leading-relaxed mt-2.5">
+          In production this runs as part of the monthly scoring job, and every monitored project has one.
+        </p>
+      </Panel>
+
+      <div className="eyebrow mt-5 mb-2">Replays available now</div>
+      <ul className="panel divide-y divide-line-faint">
+        {HERO_SUMMARY.map((h) => (
+          <li key={h.project_id}>
+            <Link
+              to={`/project/${h.project_id}/replay`}
+              className="group flex items-center gap-4 px-4 py-3 hover:bg-accent-soft/60 transition-colors duration-150"
+            >
+              <span className="min-w-0 flex-1">
+                <span className="block text-[13px] font-medium text-ink group-hover:text-accent transition-colors">
+                  {h.project_name}
+                </span>
+                <span className="num block text-2xs text-ink-3 mt-px">{h.project_id}</span>
+              </span>
+              {h.lead_time_months !== null ? (
+                <span className="text-right shrink-0">
+                  <span className="num block text-md font-semibold text-accent leading-none">
+                    {h.lead_time_months} mo
+                  </span>
+                  <span className="block text-2xs text-ink-3 mt-1">early warning</span>
+                </span>
+              ) : (
+                <span className="text-2xs text-ink-3 shrink-0 max-w-[150px] text-right leading-snug">
+                  never crosses the alert threshold
+                </span>
+              )}
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4"
+                strokeLinecap="round" strokeLinejoin="round"
+                className="shrink-0 text-accent opacity-0 -translate-x-1 transition-all duration-150
+                           group-hover:opacity-100 group-hover:translate-x-0">
+                <path d="M9 6l6 6-6 6" />
+              </svg>
+            </Link>
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }

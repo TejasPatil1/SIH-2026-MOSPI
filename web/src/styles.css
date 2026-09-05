@@ -95,6 +95,42 @@
     @apply text-ink-2;
   }
 
+  /*
+   * Collapsed rail. The label is not removed from the DOM — it becomes the
+   * hover tooltip, so the accessible name of every item survives the collapse
+   * and a screen reader hears the same nav either way.
+   */
+  .nav-item {
+    position: relative;
+  }
+  .nav-item[data-collapsed='true'] {
+    @apply justify-center px-0;
+  }
+  .nav-item[data-collapsed='true'] .nav-label {
+    position: absolute;
+    left: calc(100% + 9px);
+    top: 50%;
+    z-index: 60;
+    transform: translateY(-50%) translateX(-3px);
+    padding: 4px 8px;
+    border-radius: 4px;
+    background: #15181D;
+    color: #fff;
+    font-size: 11.5px;
+    font-weight: 500;
+    line-height: 1.35;
+    white-space: nowrap;
+    opacity: 0;
+    pointer-events: none;
+    box-shadow: 0 4px 12px -3px rgba(21, 24, 29, 0.3);
+    transition: opacity 0.13s ease, transform 0.13s ease;
+  }
+  .nav-item[data-collapsed='true']:hover .nav-label,
+  .nav-item[data-collapsed='true']:focus-visible .nav-label {
+    opacity: 1;
+    transform: translateY(-50%) translateX(0);
+  }
+
   /* ---- tables ---- */
   .tbl {
     @apply w-full border-collapse text-[13px];
@@ -111,6 +147,11 @@
   }
   .tbl td {
     @apply px-3 py-[7px] border-b border-line-faint align-middle;
+  }
+  /* Column-dense tables buy their space back from the gutters, not the content. */
+  .tbl-tight th,
+  .tbl-tight td {
+    @apply px-2;
   }
   .tbl tbody tr {
     @apply transition-colors duration-150;
@@ -130,8 +171,25 @@
   /* Named to avoid colliding with Tailwind's own `sticky` utility. */
   .tbl thead.tbl-sticky th {
     position: sticky;
-    top: 0;
     z-index: 10;
+  }
+  .tbl thead.tbl-sticky tr:first-child th {
+    top: 0;
+  }
+  .tbl thead.tbl-sticky tr.tbl-group + tr th {
+    top: 27px; /* the group row's own height */
+  }
+
+  /*
+   * Grouped header. The vertical rule is the whole point of the second row:
+   * it says "history stops here, forecast starts here" without a sentence.
+   */
+  .tbl thead tr.tbl-group th {
+    @apply h-[27px] py-0 text-[9.5px] tracking-[0.12em] border-b-0 bg-raised;
+  }
+  .tbl th.tbl-group-predicted,
+  .tbl td.tbl-group-predicted {
+    box-shadow: inset 1px 0 0 theme('colors.line.DEFAULT');
   }
 
   /* ---- controls ---- */
@@ -167,6 +225,53 @@
            text-2xs font-semibold uppercase tracking-[0.05em] border;
   }
 
+  /*
+   * ---- semantic emphasis --------------------------------------------------
+   *
+   * Three surfaces in the whole application are allowed to carry more than a
+   * hairline: the portfolio's lead-time claim, the Time Machine's finding, and
+   * a genuinely critical state. Each one is the conclusion of the screen it
+   * sits on. Everything else stays flat — an instrument that glows all over is
+   * an instrument nobody reads.
+   */
+  .emph {
+    position: relative;
+    border-color: var(--emph-line);
+    background:
+      linear-gradient(180deg, var(--emph-wash) 0%, rgba(255, 255, 255, 0) 62%),
+      #FFFFFF;
+    box-shadow:
+      0 0 0 1px var(--emph-ring),
+      0 10px 30px -18px var(--emph-glow),
+      0 1px 2px rgba(21, 24, 29, 0.04);
+  }
+  .emph::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 10px;
+    bottom: 10px;
+    width: 3px;
+    border-radius: 0 3px 3px 0;
+    background: var(--emph-edge);
+  }
+
+  /* analysis / the model's own claim */
+  .claim-band {
+    --emph-line: #C8D5E8;
+    --emph-wash: rgba(27, 63, 115, 0.055);
+    --emph-ring: rgba(27, 63, 115, 0.07);
+    --emph-glow: rgba(27, 63, 115, 0.55);
+    --emph-edge: #1B3F73;
+  }
+  /* historical reconstruction — the Time Machine's finding */
+  .finding-band {
+    --emph-line: #C8D5E8;
+    --emph-wash: rgba(46, 111, 209, 0.075);
+    --emph-ring: rgba(27, 63, 115, 0.08);
+    --emph-glow: rgba(46, 111, 209, 0.5);
+    --emph-edge: #2E6FD1;
+  }
   /* ---- skeletons ---- */
   .sk {
     @apply bg-line-faint rounded relative overflow-hidden;
@@ -215,5 +320,145 @@
   *::after {
     animation-duration: 0.01ms !important;
     transition-duration: 0.01ms !important;
+  }
+}
+
+/* ---------------------------------------------------------------- guided tour */
+
+/* Registered so the conic gradient's angle can actually be animated. Browsers
+   without @property fall back to a static (still handsome) gradient. */
+@property --tour-angle {
+  syntax: '<angle>';
+  initial-value: 0deg;
+  inherits: false;
+}
+
+@layer components {
+  /*
+   * The dim is a single huge box-shadow spread from the spotlight rect, so the
+   * cut-out travels between targets with an ordinary CSS transition and the
+   * highlighted element keeps its own pixels — nothing is painted over it.
+   */
+  .tour-spot {
+    position: absolute;
+    pointer-events: none;
+    box-shadow: 0 0 0 9999px rgba(21, 24, 29, 0.52);
+    transition:
+      top 460ms cubic-bezier(0.32, 0.72, 0, 1),
+      left 460ms cubic-bezier(0.32, 0.72, 0, 1),
+      width 460ms cubic-bezier(0.32, 0.72, 0, 1),
+      height 460ms cubic-bezier(0.32, 0.72, 0, 1),
+      border-radius 460ms ease;
+  }
+
+  /*
+   * A slowly rotating border rather than a hard static outline. The sweep runs
+   * through the product's own risk-band colours, so it reads as part of PEWS
+   * rather than as a generic onboarding highlight.
+   */
+  .tour-frame {
+    position: absolute;
+    pointer-events: none;
+    padding: 2px;
+    background: conic-gradient(
+      from var(--tour-angle),
+      #1B3F73, #2E6FD1, #16A34A, #CA8A04, #EA580C, #DC2626, #1B3F73
+    );
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    mask-composite: exclude;
+    animation: tour-sweep 5.5s linear infinite;
+    filter: drop-shadow(0 0 6px rgba(27, 63, 115, 0.28));
+    transition:
+      top 460ms cubic-bezier(0.32, 0.72, 0, 1),
+      left 460ms cubic-bezier(0.32, 0.72, 0, 1),
+      width 460ms cubic-bezier(0.32, 0.72, 0, 1),
+      height 460ms cubic-bezier(0.32, 0.72, 0, 1),
+      border-radius 460ms ease;
+  }
+  @keyframes tour-sweep {
+    to { --tour-angle: 360deg; }
+  }
+
+  /* "This panel — and this row in particular." */
+  .tour-sub {
+    position: absolute;
+    pointer-events: none;
+    border-radius: 6px;
+    box-shadow:
+      0 0 0 1.5px rgba(220, 38, 38, 0.75),
+      0 0 0 5px rgba(220, 38, 38, 0.12);
+    animation: tour-breathe 2.6s ease-in-out infinite;
+    transition:
+      top 380ms cubic-bezier(0.32, 0.72, 0, 1),
+      left 380ms cubic-bezier(0.32, 0.72, 0, 1),
+      width 380ms cubic-bezier(0.32, 0.72, 0, 1),
+      height 380ms cubic-bezier(0.32, 0.72, 0, 1);
+  }
+  @keyframes tour-breathe {
+    0%, 100% { box-shadow: 0 0 0 1.5px rgba(220, 38, 38, 0.75), 0 0 0 4px rgba(220, 38, 38, 0.12); }
+    50%      { box-shadow: 0 0 0 1.5px rgba(220, 38, 38, 0.9),  0 0 0 9px rgba(220, 38, 38, 0.03); }
+  }
+
+  /* The two opening moments: a page-level statement, not a tooltip. */
+  .tour-scrim {
+    animation: tour-scrim-in 320ms ease-out both;
+  }
+  @keyframes tour-scrim-in {
+    from { opacity: 0; }
+  }
+
+  .tour-statement {
+    @apply bg-surface border border-line-strong rounded-lg p-7;
+    box-shadow:
+      0 24px 64px -16px rgba(21, 24, 29, 0.42),
+      0 0 0 1px rgba(21, 24, 29, 0.05),
+      0 0 0 6px rgba(27, 63, 115, 0.10);
+    animation: tour-statement-in 420ms cubic-bezier(0.32, 0.72, 0, 1) both;
+  }
+  @keyframes tour-statement-in {
+    from { opacity: 0; transform: translateY(10px) scale(0.988); }
+  }
+
+  .tour-pop {
+    position: absolute;
+    @apply bg-surface border border-line-strong rounded-lg shadow-pop p-4;
+    transition:
+      top 460ms cubic-bezier(0.32, 0.72, 0, 1),
+      left 460ms cubic-bezier(0.32, 0.72, 0, 1);
+    animation: tour-pop-in 260ms cubic-bezier(0.32, 0.72, 0, 1) both;
+  }
+  @keyframes tour-pop-in {
+    from { opacity: 0; transform: scale(0.985) translateY(2px); }
+  }
+
+  .tour-icon {
+    @apply grid place-items-center w-8 h-8 rounded-md bg-accent-soft
+           border border-accent-line text-accent;
+  }
+
+  .tour-tip {
+    @apply flex items-start gap-2 mt-3 px-3 py-2.5 rounded
+           bg-raised border border-line text-[12.5px] text-ink-2 leading-snug;
+  }
+  .tour-tip svg { @apply text-risk-watch; }
+
+  /* Typing caret while the body streams in. */
+  .tour-caret {
+    @apply inline-block w-[2px] h-[13px] ml-[1px] align-[-2px] bg-accent;
+    animation: tour-blink 0.9s step-end infinite;
+  }
+  @keyframes tour-blink {
+    50% { opacity: 0; }
+  }
+
+  .tour-dot {
+    @apply w-1.5 h-1.5 rounded-full bg-accent shrink-0;
+    animation: tour-blink-dot 1.6s ease-in-out infinite;
+  }
+  @keyframes tour-blink-dot {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
   }
 }

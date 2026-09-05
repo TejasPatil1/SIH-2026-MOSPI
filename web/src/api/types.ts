@@ -75,6 +75,12 @@ export interface WatchlistRow {
   exposure_at_risk_cr: number;
   alert_count: number;
   stalled_months: number;
+  /**
+   * Highest-contributing feature for this project, in plain language. A
+   * projection of the same SHAP values the detail screen renders — so the
+   * queue states its own reasons instead of being a bare scoreboard.
+   */
+  top_driver: { label: string; text: string } | null;
 }
 
 export interface Watchlist {
@@ -194,6 +200,15 @@ export interface Replay {
   outcome_known: boolean;
   actual_cost_overrun_pct: number | null;
   actual_delay_months: number | null;
+  /**
+   * True when the trajectory was reconstructed on demand from the project's own
+   * filed monthly series rather than read from a precomputed replay. A
+   * reconstructed replay has a real threshold crossing but no filed-revision
+   * date to measure lead time against, so `official_event_month` and
+   * `lead_time_months` are null and the screen says so rather than implying the
+   * project never crossed.
+   */
+  reconstructed: boolean;
 }
 
 export interface PeerBar {

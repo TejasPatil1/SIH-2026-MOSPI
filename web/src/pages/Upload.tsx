@@ -1,7 +1,8 @@
-import { useState, type DragEvent } from 'react';
+import { useEffect, useState, type DragEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useScoreRun, useUpload } from '../api/hooks';
 import { ErrorCard, Page, Panel, RiskBadge, Section, cx } from '../components/ui';
+import { Info, Term } from '../components/Info';
 import { formatCount, formatCrore, formatMonth } from '../lib/format';
 import type { RiskBand } from '../api/types';
 
@@ -10,7 +11,7 @@ type Stage = 'upload' | 'validate' | 'score' | 'review';
 const STEPS: { key: Stage; label: string; caption: string }[] = [
   { key: 'upload', label: 'Upload', caption: 'Monthly CUF export' },
   { key: 'validate', label: 'Validate', caption: 'Schema and continuity checks' },
-  { key: 'score', label: 'Rescore', caption: 'Full portfolio inference' },
+  { key: 'score', label: 'Rescore', caption: 'Score every project' },
   { key: 'review', label: 'Review', caption: 'Band transitions' },
 ];
 
@@ -37,7 +38,7 @@ export default function Upload() {
   return (
     <Page
       title="Monthly upload and rescore"
-      lede="The operating cycle: a new CUF export is validated, the full portfolio is rescored, and the analyst reviews what changed."
+      lede={<>The operating cycle: a new <Term k="cuf" /> export is validated, the full portfolio is rescored, and the analyst reviews what changed.</>}
       actions={
         (validation || result) && <button className="btn btn-ghost" onClick={reset}>Start over</button>
       }
@@ -118,7 +119,11 @@ export default function Upload() {
 
           {/* ------------------------------------------------ validation --- */}
           {validation && (
-            <Section title="Validation report" note={validation.filename}>
+            <Section
+              title="Validation report"
+              note={validation.filename}
+              info={<Info terms={['cuf', 'snapshot_row']} title="Terms in this report" />}
+            >
               <Panel pad={false}>
                 <div className="grid grid-cols-4 divide-x divide-line border-b border-line">
                   <Cell label="Rows read" value={formatCount(validation.rows_read)} />
@@ -172,6 +177,7 @@ export default function Upload() {
             <Section
               title="Band transitions"
               note={`${result.transitions.length} projects changed band · ordered by exposure`}
+              info={<Info terms={['risk_band', 'risk_score', 'exposure_at_risk']} title="What a band change means" />}
               actions={<button className="btn btn-primary" onClick={() => nav('/watchlist')}>Open refreshed watchlist →</button>}
             >
               <Panel pad={false}>
@@ -265,13 +271,16 @@ export default function Upload() {
             </>
           ) : (
             <Panel>
-              <div className="eyebrow mb-2.5">What this step does</div>
+              <div className="eyebrow mb-2.5 flex items-center gap-1.5">
+                What this step does
+                <Info terms={['cuf', 'feature', 'shap', 'deterministic_rules']} />
+              </div>
               <ol className="space-y-3">
                 {[
                   ['Schema validation', 'Required fields, types, and reference values for ministry, sector and agency.'],
                   ['Continuity checks', 'Cumulative expenditure and physical progress may not decrease without a recorded revision.'],
                   ['Feature rebuild', 'The same feature code path used in training — never a second implementation.'],
-                  ['Batch inference', 'All ongoing projects rescored with the loaded model, then SHAP drivers and alert rules recomputed.'],
+                  ['Batch scoring', 'Every ongoing project rescored with the loaded model, then its explanation and rule checks recomputed.'],
                 ].map(([t, d], i) => (
                   <li key={t} className="flex gap-2.5">
                     <span className="num text-2xs font-bold text-ink-4 mt-[3px] w-3 shrink-0">{i + 1}</span>
@@ -300,28 +309,41 @@ const Cell = ({ label, value, tone }: { label: string; value: string; tone?: 'po
   </div>
 );
 
-/** Determinate, staged progress — a generic spinner would say nothing (§16). */
+/**
+ * Indeterminate, because the request's progress genuinely is not known.
+ *
+ * This used to be a determinate bar animating 4% to 100% over a fixed 1.4s with
+ * four phase labels fading in on a timer — entirely independent of the actual
+ * request. In an application whose whole argument is that it does not overstate
+ * what it knows, a progress bar that invents its own progress is the one place
+ * the interface contradicts itself, and it is exactly the detail a technical
+ * reviewer notices and then generalises from. The elapsed counter is real; the
+ * true duration is printed on the panel beside it once the run resolves.
+ */
 function ScoringProgress({ accepted }: { accepted: number }) {
-  const phases = ['Rebuilding features', 'Running batch inference', 'Computing SHAP drivers', 'Evaluating alert rules'];
+  const [ms, setMs] = useState(0);
+  useEffect(() => {
+    const t0 = performance.now();
+    const id = window.setInterval(() => setMs(performance.now() - t0), 100);
+    return () => window.clearInterval(id);
+  }, []);
+
   return (
     <Panel>
       <div className="flex items-baseline justify-between mb-3">
         <span className="text-[13px] font-semibold text-ink">Scoring portfolio</span>
-        <span className="num text-[12px] text-ink-2">{formatCount(accepted)} projects</span>
+        <span className="num text-[12px] text-ink-2">
+          {formatCount(accepted)} projects · {(ms / 1000).toFixed(1)} s elapsed
+        </span>
       </div>
       <div className="h-[5px] rounded-full bg-line-faint overflow-hidden">
-        <div className="h-full bg-accent rounded-full" style={{ animation: 'score 1.4s cubic-bezier(0.4,0,0.2,1) forwards' }} />
+        <div className="h-full w-1/3 bg-accent rounded-full" style={{ animation: 'score-sweep 1.15s ease-in-out infinite' }} />
       </div>
-      <style>{'@keyframes score { from { width: 4% } to { width: 100% } }'}</style>
-      <div className="grid grid-cols-4 gap-3 mt-3.5">
-        {phases.map((p, i) => (
-          <div key={p} className="text-[12px] text-ink-2 flex items-center gap-1.5"
-            style={{ animation: `fade 0.25s ease-out ${i * 0.32}s both` }}>
-            <span className="w-1.5 h-1.5 rounded-full bg-accent shrink-0" />
-            {p}
-          </div>
-        ))}
-      </div>
+      <style>{'@keyframes score-sweep { from { transform: translateX(-110%) } to { transform: translateX(320%) } }'}</style>
+      <p className="text-[12px] text-ink-2 mt-3 leading-relaxed">
+        Rebuilding features, scoring every project, then recomputing explanations and rule checks —
+        one batch, no per-stage progress reported by the scoring path.
+      </p>
     </Panel>
   );
 }

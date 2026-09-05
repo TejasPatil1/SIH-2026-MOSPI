@@ -2,7 +2,8 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAssistant } from '../api/hooks';
 import { ASSISTANT_SUGGESTIONS } from '../api/mock';
-import { Disclosure, Page, Panel, RiskBadge, Section, cx } from '../components/ui';
+import { Page, Panel, RiskBadge, Section, cx } from '../components/ui';
+import { Info } from '../components/Info';
 
 export default function Assistant() {
   const nav = useNavigate();
@@ -23,7 +24,16 @@ export default function Assistant() {
   return (
     <Page
       title="Ask the portfolio"
-      lede="Natural-language questions answered by fixed parameterised queries over the scored portfolio. Deterministic by design — it retrieves, it does not generate."
+      lede="Ask a question in plain English and it runs one of eight prewritten queries over the scored portfolio. It looks figures up; it never writes them."
+      info={
+        <Info title="How this differs from a chatbot" terms={['intent_parser']}>
+          <p>
+            Your wording is matched to a fixed query, which then runs against the same scored data
+            the rest of the application uses. The query it chose is shown with every answer, so any
+            figure can be traced back to how it was obtained.
+          </p>
+        </Info>
+      }
     >
       <div className="grid grid-cols-[minmax(0,1fr)_286px] gap-5 items-start">
         <div>
@@ -53,7 +63,7 @@ export default function Assistant() {
                 {[
                   [ASSISTANT_SUGGESTIONS[0], 'Filters the scored portfolio on consecutive cycles without measurable physical progress, then ranks the matches by risk.'],
                   [ASSISTANT_SUGGESTIONS[1], 'Orders the critical band by predicted rupee exposure rather than by probability.'],
-                  [ASSISTANT_SUGGESTIONS[2], 'Aggregates mean absolute SHAP contributions across every project in the sector.'],
+                  [ASSISTANT_SUGGESTIONS[2], 'Averages each feature’s measured effect on the score across every project in the sector.'],
                   [ASSISTANT_SUGGESTIONS[3], 'Groups predicted cost overrun by sector and ranks all 22.'],
                 ].map(([sq, what]) => (
                   <li key={sq}>
@@ -152,33 +162,38 @@ export default function Assistant() {
                       </ul>
                     )}
 
+                    {/*
+                      Shown outright, not hidden behind a control. The claim of this
+                      page is that the answer comes from a fixed query rather than
+                      from a language model — evidence for that belongs on screen.
+                    */}
                     {a.understood && (
-                      <Disclosure summary="How this was answered">
-                        <div className="space-y-3">
-                          {a.filters_applied.length > 0 && (
-                            <div>
-                              <div className="eyebrow mb-1.5">Filters applied</div>
-                              <div className="flex flex-wrap gap-1.5">
-                                {a.filters_applied.map((f) => (
-                                  <span key={`${f.field}${f.value}`} className="num text-2xs px-2 h-[21px] inline-flex items-center rounded border border-line bg-raised text-ink-2">
-                                    {f.field} {f.op} {f.value}
-                                  </span>
-                                ))}
-                              </div>
-                            </div>
-                          )}
-                          <div>
-                            <div className="eyebrow mb-1.5">Executed query</div>
-                            <pre className="num text-[11.5px] leading-relaxed bg-ink text-white/90 rounded px-3 py-2.5 overflow-x-auto">
-                              {a.query_text}
-                            </pre>
-                          </div>
-                          <p className="text-[12px] text-ink-2 leading-relaxed">
-                            The intent parser selects one of eight fixed query templates. No query is
-                            string-built from user input and no language model touches the numbers.
-                          </p>
+                      <div className="mt-4 pt-3.5 border-t border-line-faint">
+                        <div className="eyebrow mb-2 flex items-center gap-1.5">
+                          How this was answered
+                          <Info title="Why the answers are fixed queries" terms={['intent_parser']}>
+                            <p>
+                              The typed question is matched to one of eight prewritten queries. No
+                              query is assembled from your words, and no language model touches the
+                              numbers — so the same question always returns the same figures.
+                            </p>
+                          </Info>
                         </div>
-                      </Disclosure>
+
+                        {a.filters_applied.length > 0 && (
+                          <div className="flex flex-wrap gap-1.5 mb-2">
+                            {a.filters_applied.map((f) => (
+                              <span key={`${f.field}${f.value}`} className="num text-2xs px-2 h-[21px] inline-flex items-center rounded border border-line bg-raised text-ink-2">
+                                {f.field} {f.op} {f.value}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+
+                        <pre className="num text-[11.5px] leading-relaxed bg-ink text-white/90 rounded px-3 py-2.5 overflow-x-auto">
+                          {a.query_text}
+                        </pre>
+                      </div>
                     )}
                   </Panel>
 
@@ -210,19 +225,31 @@ export default function Assistant() {
 
         {/* --------------------------------------------------- right rail */}
         <Panel>
-          <div className="eyebrow mb-2.5">Why this is not a chatbot</div>
+          <div className="eyebrow mb-2.5 flex items-center gap-1.5">
+            Why this is not a chatbot
+            <Info terms={['intent_parser', 'synthetic_data']} />
+          </div>
           <p className="text-[12px] text-ink-2 leading-relaxed">
             A generative model asked about ₹42.78 lakh crore of public expenditure can produce a fluent,
             confident, wrong number. For a government monitoring system that failure mode is unacceptable,
             so the language surface is deliberately narrow.
           </p>
-          <div className="eyebrow mt-4 mb-2">Supported intents</div>
-          <ul className="space-y-1">
-            {['TOP_RISK', 'SECTOR_SUMMARY', 'MINISTRY_SUMMARY', 'STALLED_PROJECTS',
-              'PROJECT_LOOKUP', 'DRIVER_QUERY', 'COMPARE_SECTORS', 'COUNT_QUERY'].map((i) => (
-              <li key={i} className="num text-[11.5px] text-ink-2 flex items-center gap-2">
-                <span className="w-1 h-1 rounded-full bg-ink-4 shrink-0" />
-                {i}
+          <div className="eyebrow mt-4 mb-2">What it can answer</div>
+          <ul className="space-y-1.5">
+            {[
+              ['Riskiest projects', 'TOP_RISK'],
+              ['Sector summaries', 'SECTOR_SUMMARY'],
+              ['Ministry summaries', 'MINISTRY_SUMMARY'],
+              ['Stalled projects', 'STALLED_PROJECTS'],
+              ['A named project', 'PROJECT_LOOKUP'],
+              ['What drives risk', 'DRIVER_QUERY'],
+              ['Sector against sector', 'COMPARE_SECTORS'],
+              ['How many match', 'COUNT_QUERY'],
+            ].map(([label, code]) => (
+              <li key={code} className="text-[11.5px] text-ink-2 flex items-baseline gap-2">
+                <span className="w-1 h-1 rounded-full bg-ink-4 shrink-0 translate-y-[-2px]" />
+                <span className="flex-1">{label}</span>
+                <span className="num text-2xs text-ink-4">{code}</span>
               </li>
             ))}
           </ul>

@@ -127,11 +127,18 @@ function buildWatchlist(q: Record<string, unknown>): Watchlist {
       exposure_at_risk_cr: r.exposure_at_risk_cr,
       alert_count: r.alerts.length,
       stalled_months: r.stalled_months,
+      top_driver: topDriver(r),
     })),
     total_matched: matched.length,
     weighted_by_exposure: weighted,
   };
 }
+
+/** The single largest positive contribution, in the label the model itself carries. */
+const topDriver = (r: Row): { label: string; text: string } | null => {
+  const top = r.drivers.filter((d) => d.shap > 0).sort((a, b) => b.shap - a.shap)[0];
+  return top ? { label: top.label, text: top.text } : null;
+};
 
 // ---------- project detail ----------
 function buildDetail(id: string): ProjectDetail {
@@ -238,6 +245,100 @@ function buildTimeline(id: string): Timeline {
     // over a whole project life is a description of history, not a warning.
     stall_windows: stall_windows.slice(-1),
     divergence_onset_month: onset?.snapshot_month ?? null,
+  };
+}
+
+// ---------- replay ----------
+const ALERT_THRESHOLD = 50;
+
+/**
+ * Reconstructs a risk trajectory for a project that has no precomputed replay.
+ *
+ * The shape is not invented: it is the project's own filed monthly series (the
+ * same one the divergence chart draws) run through the composite the scoring
+ * path uses — spend-to-work gap, consecutive stall, schedule consumed — and
+ * then pinned so the last month equals the risk score the rest of the app
+ * already shows for this project.
+ *
+ * What it deliberately does NOT produce is a lead time. The month an official
+ * revision was *filed* is not in the snapshot data, so there is nothing to
+ * measure the threshold crossing against, and inventing one would fabricate the
+ * product's central claim. `reconstructed` tells the screen to say that.
+ */
+function buildReplay(id: string): Replay {
+  const stored = REPLAYS[id];
+  if (stored) return { ...stored, reconstructed: false };
+
+  const r = BY_ID.get(id);
+  if (!r) throw new NotFound(`Unknown project ${id}`);
+
+  const tl = buildTimeline(id).points;
+  const monthsIn = (i: number) => r.elapsed_months - (tl.length - 1 - i);
+
+  // raw composite, month by month, from the filed series only
+  let stallRun = 0;
+  const raw = tl.map((p, i) => {
+    stallRun = p.is_stalled ? stallRun + 1 : 0;
+    const gap = p.financial_progress_pct - p.physical_progress_pct;
+    const consumed = Math.max(0, monthsIn(i) / Math.max(1, r.duration_months) - 1);
+    return gap * 1.15 + stallRun * 1.6 + consumed * 22;
+  });
+
+  // A stall counter resets hard, which makes the raw composite step about far
+  // more than a monitoring signal ever would. A three-month mean is what an
+  // analyst reads anyway, and it does not move the threshold crossing.
+  const smooth = raw.map((_, i) => {
+    const w = raw.slice(Math.max(0, i - 2), i + 1);
+    return w.reduce((a, v) => a + v, 0) / w.length;
+  });
+
+  // Pin both ends to figures the model already reports, so the reconstruction
+  // agrees with the detail screen rather than telling a second story. Month zero
+  // sits at the portfolio base rate: before any filing, the base rate is what
+  // the model has.
+  const lo = Math.min(r.base_risk, r.risk_score);
+  const [a, b] = [smooth[0], smooth[smooth.length - 1]];
+  const scale = Math.abs(b - a) < 0.01 ? 0 : (r.risk_score - lo) / (b - a);
+  const risk = smooth.map((v) => Math.max(2, Math.min(97, lo + (v - a) * scale)));
+
+  const points = tl.map((p, i) => {
+    const gap = p.financial_progress_pct - p.physical_progress_pct;
+    const scoreRatio = risk[i] / Math.max(1, r.risk_score);
+    return {
+      as_of_month: p.snapshot_month,
+      elapsed_months: monthsIn(i),
+      elapsed_fraction: round(monthsIn(i) / Math.max(1, r.duration_months), 3),
+      risk_score: round(risk[i], 1),
+      pred_cost_overrun_pct: round(r.pred_cost_overrun_pct * scoreRatio, 1),
+      pred_delay_months: round(r.pred_delay_months * scoreRatio, 1),
+      physical_progress_pct: p.physical_progress_pct,
+      financial_progress_pct: p.financial_progress_pct,
+      top_driver: gap >= 6
+        ? { label: 'Progress gap', shap: round(gap * 0.42, 2), text: `Expenditure is ${round(gap, 1)} percentage points ahead of physical progress.` }
+        : topDriver(r)
+          ? { label: topDriver(r)!.label, shap: round(risk[i] * 0.05, 2), text: topDriver(r)!.text }
+          : null,
+    };
+  });
+
+  const crossIdx = points.findIndex((p) => p.risk_score >= ALERT_THRESHOLD);
+  const modelMonth = crossIdx >= 0 ? points[crossIdx].as_of_month : null;
+
+  return {
+    project_id: id,
+    project_name: r.project_name,
+    alert_threshold: ALERT_THRESHOLD,
+    points,
+    events: modelMonth
+      ? [{ kind: 'model_alert' as const, month: modelMonth, label: 'Model first flagged', detail: `Risk score crossed the ${ALERT_THRESHOLD} alert threshold.` }]
+      : [],
+    model_alert_month: modelMonth,
+    official_event_month: null,
+    lead_time_months: null,
+    outcome_known: false,
+    actual_cost_overrun_pct: null,
+    actual_delay_months: null,
+    reconstructed: true,
   };
 }
 
@@ -546,11 +647,7 @@ export function mockRequest<T>(method: 'GET' | 'POST', path: string, params?: Re
       try {
         if (seg[2] === 'timeline') return wait(buildTimeline(id) as T);
         if (seg[2] === 'peers') return wait(buildPeers(id) as T);
-        if (seg[2] === 'replay') {
-          const r = REPLAYS[id];
-          if (!r) return Promise.reject(new NotFound(`No replay for ${id}`));
-          return wait(r as unknown as T);
-        }
+        if (seg[2] === 'replay') return wait(buildReplay(id) as unknown as T);
         return wait(buildDetail(id) as T);
       } catch (e) {
         return Promise.reject(e);

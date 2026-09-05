@@ -1,0 +1,23 @@
+# API
+fastapi==0.115.6
+uvicorn[standard]==0.34.0
+pydantic==2.10.4
+python-multipart==0.0.20
+
+# Data
+pandas==2.2.3
+numpy==2.1.3
+pyarrow==18.1.0
+
+# ML — the core of the submission
+lightgbm==4.5.0
+scikit-learn==1.6.0
+shap==0.46.0
+joblib==1.4.2
+
+# Conventional baselines the model is measured against
+statsmodels==0.14.4
+lifelines==0.30.0
+
+pytest==8.3.4
+PyYAML==6.0.2

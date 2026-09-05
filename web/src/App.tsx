@@ -134,7 +134,7 @@ function Sidebar({ collapsed, onToggle }: { collapsed: boolean; onToggle: () => 
         <div className="px-3.5 pb-2 text-[11px] leading-[1.4] text-ink-4">
           Built by{' '}
           <a
-            href="https://github.com/TejasPatil1"
+            href="https://linkedin.com/in/tejas-patil-a6765935a"
             target="_blank"
             rel="noreferrer"
             className="text-ink-3 hover:text-accent underline-offset-2 hover:underline"

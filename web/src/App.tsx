@@ -128,6 +128,22 @@ function Sidebar({ collapsed, onToggle }: { collapsed: boolean; onToggle: () => 
         ))}
       </div>
 
+      {/* Byline. Collapsed there is no room for it, and a bare avatarless glyph
+          would say less than nothing, so it simply drops out. */}
+      {!collapsed && (
+        <div className="px-3.5 pb-2 text-[11px] leading-[1.4] text-ink-4">
+          Built by{' '}
+          <a
+            href="https://github.com/TejasPatil1"
+            target="_blank"
+            rel="noreferrer"
+            className="text-ink-3 hover:text-accent underline-offset-2 hover:underline"
+          >
+            Tejas Patil
+          </a>
+        </div>
+      )}
+
       <div className="px-2 pt-2 border-t border-line">
         <button
           onClick={onToggle}

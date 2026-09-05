@@ -1,0 +1,219 @@
+@import '@fontsource-variable/inter/index.css';
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    color-scheme: light;
+  }
+
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+
+  body {
+    @apply bg-ground text-ink font-sans antialiased;
+    font-size: 13.5px;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  /* Numbers must never shimmer when they update. */
+  .num,
+  table,
+  input,
+  time {
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: 'tnum' 1, 'cv05' 1;
+  }
+
+  ::selection {
+    @apply bg-accent/15;
+  }
+
+  *:focus-visible {
+    @apply outline-none ring-2 ring-accent/35 ring-offset-1 ring-offset-ground;
+  }
+
+  /* Slim, unobtrusive scrollbars — the app is dense enough already. */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: #cfcdc6 transparent;
+  }
+  *::-webkit-scrollbar {
+    width: 9px;
+    height: 9px;
+  }
+  *::-webkit-scrollbar-thumb {
+    background: #cfcdc6;
+    border-radius: 99px;
+    border: 2px solid transparent;
+    background-clip: content-box;
+  }
+  *::-webkit-scrollbar-thumb:hover {
+    background: #b6b3aa;
+    background-clip: content-box;
+  }
+}
+
+@layer components {
+  /* ---- structure ---- */
+  .panel {
+    @apply bg-surface border border-line rounded-lg;
+  }
+
+  .eyebrow {
+    @apply text-2xs font-semibold uppercase tracking-[0.09em] text-ink-3;
+  }
+
+  .rule {
+    @apply border-t border-line;
+  }
+
+  /* ---- navigation ---- */
+  .nav-item {
+    @apply flex items-center gap-2.5 px-2.5 py-[7px] rounded text-[13px] font-medium
+           text-ink-2 transition-colors duration-150 select-none;
+  }
+  .nav-item:hover {
+    @apply bg-line-faint text-ink;
+  }
+  .nav-item[data-active='true'] {
+    @apply bg-accent-soft text-accent font-semibold;
+  }
+  .nav-item[data-active='true'] .nav-icon {
+    @apply text-accent;
+  }
+  .nav-icon {
+    @apply text-ink-4 shrink-0 transition-colors duration-150;
+  }
+  .nav-item:hover .nav-icon {
+    @apply text-ink-2;
+  }
+
+  /* ---- tables ---- */
+  .tbl {
+    @apply w-full border-collapse text-[13px];
+  }
+  .tbl th {
+    @apply text-2xs font-semibold uppercase tracking-[0.07em] text-ink-3
+           text-left font-sans px-3 py-2 border-b border-line bg-raised
+           whitespace-nowrap select-none;
+  }
+  .tbl th.n,
+  .tbl td.n {
+    @apply text-right;
+    font-variant-numeric: tabular-nums;
+  }
+  .tbl td {
+    @apply px-3 py-[7px] border-b border-line-faint align-middle;
+  }
+  .tbl tbody tr {
+    @apply transition-colors duration-150;
+  }
+  .tbl tbody tr:last-child td {
+    @apply border-b-0;
+  }
+  .tbl-hover tbody tr:hover {
+    @apply bg-accent-soft/60 cursor-pointer;
+  }
+  .tbl-hover tbody tr:hover .row-arrow {
+    @apply opacity-100 translate-x-0;
+  }
+  .row-arrow {
+    @apply opacity-0 -translate-x-1 transition-all duration-150 text-accent;
+  }
+  /* Named to avoid colliding with Tailwind's own `sticky` utility. */
+  .tbl thead.tbl-sticky th {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+  }
+
+  /* ---- controls ---- */
+  .btn {
+    @apply inline-flex items-center justify-center gap-1.5 h-8 px-3 rounded
+           text-[12.5px] font-semibold border transition-all duration-150
+           select-none disabled:opacity-45 disabled:pointer-events-none;
+  }
+  .btn-primary {
+    @apply bg-accent text-white border-accent hover:bg-accent-hover
+           active:scale-[0.985];
+  }
+  .btn-ghost {
+    @apply bg-surface text-ink-2 border-line hover:border-line-strong
+           hover:text-ink active:scale-[0.985];
+  }
+  .btn-quiet {
+    @apply bg-transparent text-ink-2 border-transparent hover:bg-line-faint hover:text-ink;
+  }
+
+  .field {
+    @apply h-8 rounded border border-line bg-surface px-2.5 text-[12.5px] text-ink
+           transition-colors duration-150 hover:border-line-strong;
+  }
+  select.field {
+    @apply pr-7 appearance-none bg-no-repeat cursor-pointer;
+    background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%237C8492' stroke-width='2.5' stroke-linecap='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+    background-position: right 8px center;
+  }
+
+  .chip {
+    @apply inline-flex items-center gap-1.5 h-[22px] px-2 rounded
+           text-2xs font-semibold uppercase tracking-[0.05em] border;
+  }
+
+  /* ---- skeletons ---- */
+  .sk {
+    @apply bg-line-faint rounded relative overflow-hidden;
+  }
+  .sk::after {
+    content: '';
+    @apply absolute inset-0;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.72), transparent);
+    animation: sk 1.35s ease-in-out infinite;
+  }
+  @keyframes sk {
+    from {
+      transform: translateX(-100%);
+    }
+    to {
+      transform: translateX(100%);
+    }
+  }
+
+  /* ---- motion ---- */
+  .fade-in {
+    animation: fade 0.22s ease-out both;
+  }
+  @keyframes fade {
+    from {
+      opacity: 0;
+      transform: translateY(3px);
+    }
+  }
+
+  .draw {
+    stroke-dasharray: var(--len);
+    stroke-dashoffset: var(--len);
+    animation: draw 0.75s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  }
+  @keyframes draw {
+    to {
+      stroke-dashoffset: 0;
+    }
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}

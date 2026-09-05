@@ -152,3 +152,11 @@ tells the story it claims to.
 - `projects.json` is 4.5 MB and statically imported, which inflates the dev bundle. It
   disappears once the API serves data, so it is not worth code-splitting now.
 - Optimised for 1366×768 and 1440×900. There is no mobile layout.
+
+---
+
+## Author
+
+**Tejas Patil** — [@TejasPatil1](https://github.com/TejasPatil1)
+
+Built for SIH 2026 (MoSPI). Repository: <https://github.com/TejasPatil1/SIH-2026-MOSPI>

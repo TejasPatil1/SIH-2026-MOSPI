@@ -69,8 +69,8 @@ export function DivergenceChart({ timeline, height = 260 }: { timeline: Timeline
       <ComposedChart data={data} margin={{ top: 20, right: 16, bottom: 4, left: 0 }}>
         <defs>
           <linearGradient id="gapFill" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor={AMBER} stopOpacity={0.22} />
-            <stop offset="100%" stopColor={AMBER} stopOpacity={0.06} />
+            <stop offset="0%" stopColor={AMBER} stopOpacity={0.34} />
+            <stop offset="100%" stopColor={AMBER} stopOpacity={0.12} />
           </linearGradient>
         </defs>
 
@@ -143,7 +143,7 @@ export function RiskTrajectory({ replay, index, height = 268 }: {
 }) {
   const [ref, w] = useWidth<HTMLDivElement>();
   const pts = replay.points;
-  const PL = 46, PR = 22, PT = 26, PB = 48;
+  const PL = 46, PR = 22, PT = 26, PB = 30;
   const iw = Math.max(10, w - PL - PR);
   const ih = height - PT - PB;
 
@@ -254,32 +254,23 @@ export function RiskTrajectory({ replay, index, height = 268 }: {
           </div>
         </div>
       )}
-      {showAlert && (
-        <MarkerLabel x={x(alertIdx)} width={w} tone="accent" title="Model first flagged"
-          sub={formatMonthShort(replay.model_alert_month!)} top={PT + ih + 6} />
-      )}
-      {showOfficial && (
-        <MarkerLabel x={x(officialIdx)} width={w} tone="critical" title="Official revision"
-          sub={formatMonthShort(replay.official_event_month!)} top={PT + ih + 6} />
-      )}
     </div>
   );
 }
 
-function MarkerLabel({ x, width, tone, title, sub, top }: {
-  x: number; width: number; tone: 'accent' | 'critical'; title: string; sub: string; top: number;
-}) {
-  const flip = x > width - 110;
+export function TrajectoryLegend({ replay }: { replay: Replay }) {
   return (
-    <div
-      className="absolute pointer-events-none fade-in leading-tight"
-      style={{ left: x, top, transform: flip ? 'translateX(-100%)' : 'none', paddingLeft: flip ? 0 : 6, paddingRight: flip ? 6 : 0 }}
-    >
-      <div className={cx('text-2xs font-bold uppercase tracking-[0.06em] whitespace-nowrap',
-        tone === 'accent' ? 'text-accent' : 'text-risk-critical')}>
-        {title}
-      </div>
-      <div className="num text-[11px] font-semibold text-ink-2 whitespace-nowrap">{sub}</div>
+    <div className="flex items-center gap-4 text-[11.5px] text-ink-2">
+      <span className="flex items-center gap-1.5"><span className="w-3 h-[2.5px] rounded-full bg-accent" />Model risk score</span>
+      <span className="flex items-center gap-1.5">
+        <span className="w-2 h-2 rounded-full border-2 border-accent bg-surface" />Model alert
+      </span>
+      {replay.official_event_month && (
+        <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-risk-critical" />Official revision</span>
+      )}
+      <span className="flex items-center gap-1.5">
+        <span className="w-3 h-0 border-t-[2px] border-dashed border-risk-critical" />Alert threshold
+      </span>
     </div>
   );
 }
@@ -421,7 +412,7 @@ export function BandDistribution({ bands, onSelect, total }: {
               </span>
             </div>
             <div className="num text-md font-semibold text-ink mt-1 leading-none">{b.count}</div>
-            <div className="num text-2xs text-ink-3 mt-1">{formatCrore(b.exposure_cr)} at risk</div>
+            <div className="num text-2xs text-ink-3 mt-1 whitespace-nowrap">{formatCrore(b.exposure_cr)}</div>
           </button>
         ))}
       </div>

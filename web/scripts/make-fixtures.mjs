@@ -35,6 +35,11 @@ const gauss = () => {
   return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
 };
 const round = (v, d = 1) => Number(v.toFixed(d));
+const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+const monthLabel = (iso) => {
+  const [y, m] = iso.slice(0, 7).split('-');
+  return `${MONTH_NAMES[Number(m) - 1]} ${y}`;
+};
 const pad = (n, w) => String(n).padStart(w, '0');
 const addMonths = (iso, k) => {
   const [y, m] = iso.split('-').map(Number);
@@ -509,10 +514,10 @@ function buildAlerts(p) {
   const gap = round(p.financial_progress_pct - p.physical_progress_pct, 1);
   if (p.stalled_months >= 3) out.push({ rule_id: 'R1_PROGRESS_STALL', severity: 'HIGH', title: 'Physical progress stalled', message: `Physical progress unchanged for ${p.stalled_months} consecutive monitoring cycles.`, evidence: `${p.physical_progress_pct}% for ${p.stalled_months} cycles` });
   if (gap >= 12) out.push({ rule_id: 'R2_SPEND_AHEAD_OF_WORK', severity: gap >= 20 ? 'HIGH' : 'MEDIUM', title: 'Expenditure ahead of physical work', message: `Financial progress exceeds physical progress by ${gap} percentage points.`, evidence: `${p.financial_progress_pct}% spent vs ${p.physical_progress_pct}% built` });
-  if (p._elapsedFrac > 1) out.push({ rule_id: 'R3_SCHEDULE_EXCEEDED', severity: 'HIGH', title: 'Sanctioned schedule exceeded', message: 'The project has passed its original commissioning date without completion.', evidence: `Original date ${p.original_commissioning_date.slice(0, 7)}` });
+  if (p._elapsedFrac > 1) out.push({ rule_id: 'R3_SCHEDULE_EXCEEDED', severity: 'HIGH', title: 'Sanctioned schedule exceeded', message: 'The project has passed its original commissioning date without completion.', evidence: `Original date ${monthLabel(p.original_commissioning_date)}` });
   if (p.anticipated_cost_cr && p.anticipated_cost_cr > p.original_cost_cr * 1.1) out.push({ rule_id: 'R4_COST_REVISED', severity: 'MEDIUM', title: 'Cost revised upward', message: `Anticipated cost is ${round(((p.anticipated_cost_cr / p.original_cost_cr) - 1) * 100, 1)}% above sanctioned cost.`, evidence: `${p.original_cost_cr.toLocaleString('en-IN')} Cr → ${p.anticipated_cost_cr.toLocaleString('en-IN')} Cr` });
   if (p._elapsedFrac > 0.5 && p.physical_progress_pct < 30) out.push({ rule_id: 'R5_LOW_PROGRESS_LATE', severity: 'HIGH', title: 'Low progress past schedule midpoint', message: 'Over half the sanctioned duration has elapsed with physical progress below 30%.', evidence: `${p.physical_progress_pct}% at ${Math.round(p._elapsedFrac * 100)}% elapsed` });
-  if (p.months_since_update >= 3) out.push({ rule_id: 'R6_STALE_REPORTING', severity: 'MEDIUM', title: 'Stale monitoring data', message: `No CUF update received for ${p.months_since_update} monitoring cycles. Risk score is computed on ageing inputs.`, evidence: `Last update ${p.last_updated_month.slice(0, 7)}` });
+  if (p.months_since_update >= 3) out.push({ rule_id: 'R6_STALE_REPORTING', severity: 'MEDIUM', title: 'Stale monitoring data', message: `No CUF update received for ${p.months_since_update} monitoring cycles. Risk score is computed on ageing inputs.`, evidence: `Last update ${monthLabel(p.last_updated_month)}` });
   if (p._reasonCat === 'land' || p._reasonCat === 'rnr') out.push({ rule_id: 'R7_LAND_BLOCKER', severity: 'MEDIUM', title: 'Land / R&R blocker reported', message: 'Reported delay reason is a land or resettlement blocker, historically the slowest category to clear.', evidence: p.reason_for_delay ?? '' });
   if (p.exposure_at_risk_cr >= 500) out.push({ rule_id: 'R8_HIGH_EXPOSURE', severity: 'HIGH', title: 'Material financial exposure', message: 'Predicted overrun on this project represents a material share of sector exposure.', evidence: `${round(p.exposure_at_risk_cr, 0).toLocaleString('en-IN')} Cr at risk` });
   return out.slice(0, 4);

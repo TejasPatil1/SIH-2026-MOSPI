@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { useProject, useReplay } from '../api/hooks';
 import { HERO_SUMMARY } from '../api/mock';
-import { RiskTrajectory } from '../components/charts';
+import { RiskTrajectory, TrajectoryLegend } from '../components/charts';
 import { EmptyState, ErrorCard, Panel, Skeleton, cx } from '../components/ui';
 import { BAND, clamp, formatCrore, formatMonth, formatMonths, formatPct } from '../lib/format';
 
@@ -99,7 +99,7 @@ export default function TimeMachine() {
   return (
     <div className="fade-in">
       {/* ------------------------------------------------------------ header */}
-      <header className="flex items-start justify-between gap-8 pb-4 mb-4 border-b border-line">
+      <header className="flex items-start justify-between gap-8 pb-3 mb-3 border-b border-line">
         <div className="min-w-0">
           <Link to={`/project/${id}`} className="inline-flex items-center gap-1.5 text-[12px] font-semibold text-ink-2 hover:text-accent transition-colors mb-2">
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
@@ -108,9 +108,8 @@ export default function TimeMachine() {
             {data.project_name}
           </Link>
           <h1 className="text-xl font-semibold tracking-[-0.015em] text-ink">Time Machine</h1>
-          <p className="text-[13px] text-ink-2 mt-1 max-w-3xl">
-            Reconstructing the risk score month by month, using only the information that existed in each
-            monitoring cycle. Everything after the selected month is masked from the model.
+          <p className="text-[13px] text-ink-2 mt-1">
+            Re-scoring the project at every past monitoring month, with everything after that month masked.
           </p>
         </div>
 
@@ -125,23 +124,20 @@ export default function TimeMachine() {
 
       <div className="grid grid-cols-[minmax(0,1fr)_296px] gap-5 items-start">
         {/* ------------------------------------------------------- trajectory */}
-        <div className="space-y-4">
-          <Panel className="pt-4 px-5 pb-5">
+        <div className="space-y-3">
+          <Panel className="pt-3.5 px-5 pb-4">
             <div className="flex items-baseline justify-between mb-1">
               <h2 className="text-[13px] font-semibold text-ink">Reconstructed risk trajectory</h2>
-              <div className="flex items-center gap-4 text-[11.5px] text-ink-2">
-                <span className="flex items-center gap-1.5"><span className="w-3 h-[2.5px] rounded-full bg-accent" />Model risk score</span>
-                <span className="flex items-center gap-1.5"><span className="w-3 h-[2px] rounded-full bg-risk-critical" style={{ opacity: 0.7 }} />Alert threshold</span>
-              </div>
+              <TrajectoryLegend replay={data} />
             </div>
 
-            <RiskTrajectory replay={data} index={index} height={300} />
+            <RiskTrajectory replay={data} index={index} height={252} />
 
             {/* ------------------------------------------------ transport bar */}
-            <div className="flex items-center gap-4 mt-5 pt-4 border-t border-line">
+            <div className="flex items-center gap-4 mt-4 pt-3.5 border-t border-line">
               <button
                 onClick={toggle}
-                className={cx('btn h-9 px-3.5 shrink-0 w-[152px]', playing ? 'btn-ghost' : 'btn-primary')}
+                className={cx('btn h-9 px-3.5 shrink-0 w-[168px] whitespace-nowrap', playing ? 'btn-ghost' : 'btn-primary')}
               >
                 {playing ? (
                   <><svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="5" width="4" height="14" rx="1" /><rect x="14" y="5" width="4" height="14" rx="1" /></svg>Pause</>
@@ -166,10 +162,10 @@ export default function TimeMachine() {
                 </div>
               </div>
 
-              <div className="text-right shrink-0 w-[112px]">
+              <div className="text-right shrink-0 w-[136px]">
                 <div className="eyebrow mb-0.5">Viewing</div>
                 <div className="num text-md font-semibold text-ink leading-none">{formatMonth(cur.as_of_month)}</div>
-                <div className="num text-2xs text-ink-3 mt-1">
+                <div className="num text-2xs text-ink-3 mt-1 whitespace-nowrap">
                   month {cur.elapsed_months} · {(cur.elapsed_fraction * 100).toFixed(0)}% elapsed
                 </div>
               </div>

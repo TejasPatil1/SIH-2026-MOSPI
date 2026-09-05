@@ -115,7 +115,6 @@ export default function ProjectDetail() {
         <div className="space-y-5">
           <Section
             title="Expenditure against physical progress"
-            note="the divergence between the two is the primary early-warning signal"
             actions={<DivergenceLegend />}
           >
             <Panel>

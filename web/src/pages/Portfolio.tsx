@@ -36,7 +36,7 @@ export default function Portfolio() {
   return (
     <Page
       title="Infrastructure Risk Intelligence"
-      lede="Early-warning signals across the monitored central sector infrastructure portfolio. Scores are model output, not recorded outcomes."
+      lede="Early-warning signals across the monitored central sector infrastructure portfolio."
       actions={
         all ? (
           <>
@@ -53,10 +53,10 @@ export default function Portfolio() {
       {isLoading && <PortfolioSkeleton />}
 
       {data && (
-        <div className="space-y-5">
+        <div className="space-y-4">
           {/* ---- headline: scale and money first, hierarchy not five equal cards ---- */}
-          <div className="panel p-5">
-            <div className="grid grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)_minmax(0,1.35fr)] gap-7 divide-x divide-line">
+          <div className="panel p-4">
+            <div className="grid grid-cols-[minmax(0,1.12fr)_minmax(0,1fr)_minmax(0,1.4fr)] gap-6 divide-x divide-line">
               <div>
                 <Metric
                   label="Revised portfolio value"
@@ -65,16 +65,30 @@ export default function Portfolio() {
                   size="hero"
                   hint={
                     <>
-                      Sanctioned at <span className="num font-semibold text-ink-2">{formatCrore(data.kpis.original_cost_cr)}</span> across{' '}
-                      <span className="num font-semibold text-ink-2">{formatCount(data.kpis.projects_monitored)}</span> projects,{' '}
-                      <span className="num font-semibold text-ink-2">{data.kpis.ministries}</span> ministries,{' '}
-                      <span className="num font-semibold text-ink-2">{data.kpis.sectors}</span> sectors.
+                      <span className="num font-semibold text-ink-2">{formatCount(data.kpis.projects_monitored)}</span> projects ·{' '}
+                      <span className="num font-semibold text-ink-2">{data.kpis.ministries}</span> ministries ·{' '}
+                      <span className="num font-semibold text-ink-2">{data.kpis.sectors}</span> sectors
                     </>
                   }
                 />
+
+                <div className="mt-4 pt-3.5 border-t border-line-faint space-y-2">
+                  {[
+                    ['Sanctioned', data.kpis.original_cost_cr, '#A9BBD4'],
+                    ['Revised', data.kpis.revised_cost_cr, '#1B3F73'],
+                    ['Spent to date', data.kpis.expenditure_cr, '#7C8492'],
+                  ].map(([label, value, color]) => (
+                    <div key={label as string} className="grid grid-cols-[86px_1fr_84px] items-center gap-2.5">
+                      <span className="text-[11.5px] text-ink-2">{label as string}</span>
+                      <span className="h-[9px] rounded-[2px]"
+                        style={{ width: `${((value as number) / data.kpis.revised_cost_cr) * 100}%`, background: color as string }} />
+                      <span className="num text-[11.5px] font-semibold text-ink text-right">{formatCrore(value as number)}</span>
+                    </div>
+                  ))}
+                </div>
               </div>
 
-              <div className="pl-7">
+              <div className="pl-6">
                 <Metric
                   label="Cost overrun already incurred"
                   value={croreParts(data.kpis.overrun_cr).value}
@@ -87,7 +101,7 @@ export default function Portfolio() {
                     </>
                   }
                 />
-                <div className="mt-4 pt-4 border-t border-line-faint">
+                <div className="mt-3 pt-3 border-t border-line-faint">
                   <Metric
                     label="Expenditure to date"
                     value={croreParts(data.kpis.expenditure_cr).value}
@@ -98,7 +112,7 @@ export default function Portfolio() {
                 </div>
               </div>
 
-              <div className="pl-7">
+              <div className="pl-6">
                 <div className="flex items-start justify-between gap-4 mb-3">
                   <Metric
                     label="Predicted exposure at risk"
@@ -121,14 +135,14 @@ export default function Portfolio() {
           </div>
 
           {/* ---- where to look, and what the model is keying on ---- */}
-          <div className="grid grid-cols-[minmax(0,1.62fr)_minmax(0,1fr)] gap-5">
+          <div className="grid grid-cols-[minmax(0,1.62fr)_minmax(0,1fr)] gap-4">
             <Section
               title="Risk concentration by sector"
-              note="Bar length is predicted rupee exposure · segments are risk-band composition"
+              note="top 6 by exposure · bar length is rupee exposure, segments are band composition"
               actions={<button className="btn btn-quiet" onClick={() => toWatchlist()}>Open watchlist →</button>}
             >
               <Panel>
-                <SectorMatrix sectors={data.sectors} onSelect={toWatchlist} limit={10} />
+                <SectorMatrix sectors={data.sectors} onSelect={toWatchlist} limit={6} />
               </Panel>
             </Section>
 
@@ -159,7 +173,7 @@ function PortfolioSkeleton() {
           </div>
         ))}
       </div>
-      <div className="grid grid-cols-[minmax(0,1.62fr)_minmax(0,1fr)] gap-5">
+      <div className="grid grid-cols-[minmax(0,1.62fr)_minmax(0,1fr)] gap-4">
         <div className="panel p-4 space-y-2.5">
           {Array.from({ length: 10 }, (_, i) => <Skeleton key={i} className="h-6" />)}
         </div>

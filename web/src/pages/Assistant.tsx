@@ -44,29 +44,53 @@ export default function Assistant() {
             </button>
           </form>
 
-          <div className="flex flex-wrap gap-2 mb-5">
-            {ASSISTANT_SUGGESTIONS.map((s) => (
-              <button
-                key={s}
-                onClick={() => submit(s)}
-                className="text-[12px] px-2.5 h-[26px] rounded-full border border-line bg-surface text-ink-2
-                           hover:border-accent-line hover:bg-accent-soft hover:text-accent
-                           transition-all duration-150 active:scale-[0.98]"
-              >
-                {s}
-              </button>
-            ))}
-          </div>
-
-          {/* ------------------------------------------------------ answer */}
           {!asked && (
-            <Panel className="border-dashed">
-              <p className="text-[12.5px] text-ink-2 leading-relaxed">
-                Pick a suggested question or type your own. Answers are assembled from query results, so every
-                figure traces back to a row in the scored portfolio — the assistant is structurally incapable of
-                inventing a number.
-              </p>
-            </Panel>
+            <div className="panel overflow-hidden">
+              <div className="px-4 py-2.5 border-b border-line bg-raised">
+                <span className="eyebrow">Try one of these</span>
+              </div>
+              <ul className="divide-y divide-line-faint">
+                {[
+                  [ASSISTANT_SUGGESTIONS[0], 'Filters the scored portfolio on consecutive cycles without measurable physical progress, then ranks the matches by risk.'],
+                  [ASSISTANT_SUGGESTIONS[1], 'Orders the critical band by predicted rupee exposure rather than by probability.'],
+                  [ASSISTANT_SUGGESTIONS[2], 'Aggregates mean absolute SHAP contributions across every project in the sector.'],
+                  [ASSISTANT_SUGGESTIONS[3], 'Groups predicted cost overrun by sector and ranks all 22.'],
+                ].map(([sq, what]) => (
+                  <li key={sq}>
+                    <button
+                      onClick={() => submit(sq)}
+                      className="w-full text-left px-4 py-3 flex items-center gap-4 group
+                                 hover:bg-accent-soft/60 transition-colors duration-150"
+                    >
+                      <span className="min-w-0 flex-1">
+                        <span className="block text-[13px] font-medium text-ink group-hover:text-accent transition-colors">{sq}</span>
+                        <span className="block text-[12px] text-ink-2 mt-0.5 leading-snug">{what}</span>
+                      </span>
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4"
+                        strokeLinecap="round" strokeLinejoin="round" className="row-arrow shrink-0">
+                        <path d="M9 6l6 6-6 6" />
+                      </svg>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {asked && (
+            <div className="flex flex-wrap gap-2 mb-4">
+              {ASSISTANT_SUGGESTIONS.map((sq) => (
+                <button
+                  key={sq}
+                  onClick={() => submit(sq)}
+                  className="text-[12px] px-2.5 h-[26px] rounded-full border border-line bg-surface text-ink-2
+                             hover:border-accent-line hover:bg-accent-soft hover:text-accent
+                             transition-all duration-150 active:scale-[0.98]"
+                >
+                  {sq}
+                </button>
+              ))}
+            </div>
           )}
 
           {asked && (

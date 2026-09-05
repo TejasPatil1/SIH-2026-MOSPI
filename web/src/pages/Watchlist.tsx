@@ -5,7 +5,7 @@ import {
   EmptyState, ErrorCard, Page, ProgressBar, RiskBadge, Section, SegmentedControl,
   Select, SkeletonTable, Toggle, cx,
 } from '../components/ui';
-import { BAND_ORDER, formatCount, formatCrore, formatMonths, formatPct, downloadCsv } from '../lib/format';
+import { BAND_ORDER, formatCount, formatCrore, formatPct, downloadCsv } from '../lib/format';
 
 export default function Watchlist() {
   const nav = useNavigate();
@@ -131,7 +131,7 @@ export default function Watchlist() {
                       <th className="w-[104px]">Progress</th>
                       <th className="w-[110px]">Risk</th>
                       <th className="n w-[80px]">Overrun</th>
-                      <th className="n w-[74px]">Delay</th>
+                      <th className="n w-[78px]">Delay (mo)</th>
                       <th className="n w-[92px]">Exposure</th>
                       <th className="n w-[46px]">Alerts</th>
                       <th className="w-[20px]" />
@@ -149,9 +149,9 @@ export default function Watchlist() {
                         <td className="max-w-0">
                           <div className="font-medium text-ink truncate" title={r.project_name}>{r.project_name}</div>
                           <div className="num text-2xs text-ink-3 mt-px truncate">
-                            {r.project_id} · {r.state}
+                            {r.project_id}
                             {r.stalled_months > 0 && (
-                              <span className="text-risk-high font-semibold"> · stalled {r.stalled_months}mo</span>
+                              <span className="text-risk-high font-semibold"> · stalled {r.stalled_months} mo</span>
                             )}
                           </div>
                         </td>
@@ -160,7 +160,7 @@ export default function Watchlist() {
                         <td><ProgressBar value={r.physical_progress_pct} width={48} /></td>
                         <td><RiskBadge band={r.risk_band} score={r.risk_score} size="sm" /></td>
                         <td className="n font-semibold text-ink">{formatPct(r.pred_cost_overrun_pct, 1, true)}</td>
-                        <td className="n text-ink">{formatMonths(r.pred_delay_months, 1, true)}</td>
+                        <td className="n text-ink">+{r.pred_delay_months.toFixed(1)}</td>
                         <td className={cx('n font-semibold', weighted ? 'text-accent' : 'text-ink')}>
                           {formatCrore(r.exposure_at_risk_cr)}
                         </td>

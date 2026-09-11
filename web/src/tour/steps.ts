@@ -47,6 +47,15 @@ export interface TourStep {
   body2?: string;
   /** Eyebrow above the title on a statement card. */
   kicker?: string;
+  /**
+   * Clip shown under the prose on a statement card. A plain static file under
+   * /public — the browser range-requests it as it plays, and `preload="none"`
+   * means nothing is fetched until the viewer presses play. No backend.
+   * If the file isn't there yet, the block removes itself.
+   */
+  video?: string;
+  /** Still frame for `video`, shown before playback. Optional. */
+  poster?: string;
   /** Figures printed under a statement card's prose. Real values only. */
   stats?: { value: string; unit?: string; label: string }[];
   /** Short aside shown in a callout under the body. One sentence. */
@@ -111,6 +120,11 @@ export const TOUR_STEPS: TourStep[] = [
       { value: revised.value, unit: revised.unit, label: 'after revision' },
       { value: overrun.value, unit: overrun.unit, label: 'of overrun, recorded after the fact' },
     ],
+    // ponytail: placeholder — drop a ~1 min MP4 at web/public/tour/intro.mp4
+    // (H.264 + faststart so the moov atom is at the front and it plays while
+    // it downloads). Until then this block hides itself.
+    video: '/tour/intro.mp4',
+    poster: '/tour/intro.jpg',
     tip: `${formatCount(P.kpis.projects_monitored)} ongoing projects across ${P.kpis.ministries} ministries file into this cycle every month.`,
   },
 

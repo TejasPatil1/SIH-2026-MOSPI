@@ -180,6 +180,8 @@ export default function TourOverlay() {
             <p className="text-[15px] text-ink-2 leading-[1.62] mt-3 max-w-[62ch]">{step.body2}</p>
           )}
 
+          {step.video && <TourVideo key={step.video} src={step.video} poster={step.poster} />}
+
           {step.stats && (
             <div className="grid grid-cols-3 gap-5 mt-6 pt-5 border-t border-line divide-x divide-line">
               {step.stats.map((s, i) => (
@@ -376,6 +378,28 @@ export default function TourOverlay() {
         </div>
       </div>
     </div>
+  );
+}
+
+/**
+ * Streams a static clip. `preload="metadata"` fetches only the header (a few KB),
+ * so the step stays weightless and a missing file fails fast enough to hide
+ * the block; the rest arrives over HTTP range requests as it plays, which every
+ * static host (and Vite) already serves — no backend, no player library.
+ */
+function TourVideo({ src, poster }: { src: string; poster?: string }) {
+  const [gone, setGone] = useState(false);
+  if (gone) return null;
+  return (
+    <video
+      className="mt-5 w-full rounded-lg border border-line bg-ink/90 aspect-video"
+      src={src}
+      poster={poster}
+      controls
+      playsInline
+      preload="metadata"
+      onError={() => setGone(true)}
+    />
   );
 }
 
